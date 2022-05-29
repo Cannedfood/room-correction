@@ -1,0 +1,65 @@
+body {
+	margin: 0;
+	background: #222;
+	color: #DDF;
+	height: 100vh;
+	max-height: 100vh;
+}
+
+* { color: inherit; }
+input {
+	background: #FFF1;
+	margin: 0;
+	border: none;
+	outline: none;
+}
+
+button, .btn {
+	border: 1px solid black;
+	background: #444;
+	color: white;
+	padding: .3em;
+	border-radius: .3em;
+	margin: .3em;
+	cursor: pointer;
+
+	&:hover {
+		border-color: white;
+		background: #666;
+	}
+}
+
+.icon {
+	width:  2em;
+	height: 2em;
+}
+
+.row {
+	display: flex;
+	flex-flow: row;
+}
+.col {
+	display: flex;
+	flex-flow: column;
+}
+
+.layer { background: #FFF2; }
+
+.w1  { width: 10%;  box-sizing: border-box; }
+.w2  { width: 20%;  box-sizing: border-box; }
+.w3  { width: 30%;  box-sizing: border-box; }
+.w4  { width: 40%;  box-sizing: border-box; }
+.w5  { width: 50%;  box-sizing: border-box; }
+.w6  { width: 60%;  box-sizing: border-box; }
+.w7  { width: 70%;  box-sizing: border-box; }
+.w8  { width: 80%;  box-sizing: border-box; }
+.w9  { width: 90%;  box-sizing: border-box; }
+.w10 { width: 100%; box-sizing: border-box; }
+
+.outline {
+	border: 1px solid #666;
+	&:hover { border: 1px solid #888; }
+	&.active { border: 1px solid #BBB; }
+}
+
+
