@@ -54,6 +54,10 @@ export class AppState {
 	}
 
 	async measure() {
+		if(!(window as any).chrome && !confirm("Measurement only works reliably in chromium-based browsers, measure anyways?")) {
+			return;
+		}
+
 		const a = new AudioMeasurementContext(new AudioContext({ latencyHint: "interactive" }));
 		await a.start();
 

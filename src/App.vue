@@ -5,7 +5,6 @@ import type { Measurement, MeasurementType } from './State';
 
 import MeasurementDiagram from './components/MeasurementDiagram.vue';
 import GettingStarted from './components/GettingStarted.vue';
-import { isNumber, sample } from 'lodash';
 
 const state = inject<AppState>('app-state')!;
 
@@ -50,6 +49,8 @@ async function uploadMicCalibration(e: Event) {
 
 const calibration = computed(() => state.measurements.find(m => m.type == 'mic-calibration'));
 
+const isChrome = (window as any).chrome;
+
 </script>
 
 <template lang="pug">
@@ -75,6 +76,10 @@ const calibration = computed(() => state.measurements.find(m => m.type == 'mic-c
 				v-if="1 == selectedCount('correction') && 2 == selectedCount()"
 				@click="state.convolveSelection()"
 			) Apply Correction
+		.red(v-if="!isChrome")
+			p.b Measurement does only reliably work on Chrome (and other chromium-based browsers).
+			p.sm Firefox for example will mute all inputs while playing a sound, so we can't measure the room response while playing a sine sweep.
+			p.sm Other browsers may work as well, but I could only test it on Firefox and Chromium
 	MeasurementDiagram.w7
 .row
 	label.btn.yellow(v-if="!calibration") Upload Mic Calibration
@@ -84,6 +89,13 @@ const calibration = computed(() => state.measurements.find(m => m.type == 'mic-c
 .row
 	.col
 		button(@click="state.measure()") Measure
+		//- label Calibration
+		//- 	select(v-if="state.measurements.some(m => m.type == 'mic-calibration')")
+		//- 		option None
+		//- 		option(
+		//- 			v-for="m of state.measurements.filter(m => m.type == 'mic-calibration')"
+		//- 			:value="m"
+		//- 		) {{m.name}}
 		label Num Measurements:
 			input(type="number" v-model.number="state.settings.numMeasurements")
 		label Sweep Duration:
