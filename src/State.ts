@@ -209,7 +209,7 @@ export class AppState {
 			const gainN = Number.parseFloat(gain);
 			if(!Number.isNaN(freqN) && !Number.isNaN(freqN)) {
 				frequencies.push(freqN);
-				gains.push(gainN);
+				gains.push(db(gainN));
 			}
 		}
 
@@ -217,11 +217,11 @@ export class AppState {
 		const amplitude = new Float32Array(sampleRate);
 		amplitude.fill(1);
 		for(let i = 0; i < frequencies.length - 1; i++) {
-			const start = Math.ceil(frequencies[i]);
-			const startError = frequencies[i] - start;
-			const end   = Math.floor(frequencies[i+1]);
+			const start = Math.floor(frequencies[i]);
+			const end   = Math.floor(frequencies[i+1])+1;
 			const step  = (gains[i+1] - gains[i]) / (end - start);
 
+			const startError = frequencies[i] - start;
 			let gain = gains[i] + startError * step;
 			for(let j = start; j < end; j++) {
 				amplitude[j] = gain;
