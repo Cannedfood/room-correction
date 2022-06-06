@@ -1,9 +1,14 @@
 body {
 	margin: 0;
 	background: #222;
-	color: #DDF;
+	color: #EEE;
 	height: 100vh;
 	max-height: 100vh;
+
+	::selection {
+		color: #000;
+		background: #FFF8;
+	}
 }
 
 * { color: inherit; }
@@ -14,7 +19,7 @@ input {
 	outline: none;
 }
 
-button, .btn {
+button, select, .btn {
 	border: 1px solid black;
 	background: #444;
 	color: white;
@@ -22,6 +27,7 @@ button, .btn {
 	border-radius: .3em;
 	margin: .3em;
 	cursor: pointer;
+	outline: none;
 
 	&:hover {
 		border-color: white;
@@ -29,9 +35,23 @@ button, .btn {
 	}
 }
 
+.right {
+	justify-content: right;
+	text-align: right;
+}
+.center {
+	justify-content: center;
+	text-align: center;
+}
+
+label>input[type=file] {
+	display: none;
+}
+
 .icon {
 	width:  2em;
 	height: 2em;
+	text-align: center;
 }
 
 .row {
@@ -42,8 +62,27 @@ button, .btn {
 	display: flex;
 	flex-flow: column;
 }
+.stack {
+	position: relative;
+	>.left   { left:   0; position: absolute; }
+	>.right  { right:  0; position: absolute; }
+	>.top    { top:    0; position: absolute; }
+	>.bottom { bottom: 0; position: absolute; }
+}
 
-.layer { background: #FFF2; }
+.layer  { background: #FFF2; }
+.dark   { background: #2228; }
+.red    { background: #F002; }
+.green  { background: #0F02; }
+.blue   { background: #00F2; }
+.yellow { background: #FF02; }
+
+.clickable {
+	cursor: pointer;
+}
+
+.p1 { padding-inline: 0.5em; padding-block: .375em; }
+.p2 { padding-inline: 1.0em; padding-block: .750em;  }
 
 .w1  { width: 10%;  box-sizing: border-box; }
 .w2  { width: 20%;  box-sizing: border-box; }

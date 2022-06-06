@@ -8,11 +8,25 @@ export class Grid {
 	maxX = 20000;
 	minY = -1;
 	maxY =  1;
+	logX = 0;
+	logY = 0;
+	granularityX = 1;
+	granularityY = 1;
 
 	transformX(x: number) {
-		return (x - this.minX) / (this.maxX - this.minX);
+		if(this.logX)
+			return (Math.log2(1 + x) - Math.log2(this.minX)) / (Math.log2(this.maxX) - Math.log2(this.minX));
+		else
+			return (x - this.minX) / (this.maxX - this.minX);
 	}
 	transformY(y: number) {
+		if(this.logY) {
+			const db = 20*Math.log10(y);
+			y = db;
+			// return 1 - Math.log2(1 + y - this.minY) / Math.log2(this.maxY - this.minY);
+			// return 1 - ((20 * Math.log10(y)) - this.minY) / (this.maxX - this.minY);
+		}
+
 		return 1 - (y - this.minY) / (this.maxY - this.minY);
 	}
 
@@ -24,10 +38,12 @@ export class Grid {
 		}
 		return result;
 	}
-	samplesToPoints(samples: Float32Array) {
+	samplesToPoints(samples: Float32Array, sampleRate?: number) {
+		sampleRate = sampleRate ?? samples.length;
+
 		const points = new Float32Array(samples.length*2);
 		for(let i = 0; i < samples.length; i++) {
-			points[i*2+0] = this.transformX(i);
+			points[i*2+0] = this.transformX(i * sampleRate / samples.length);
 			points[i*2+1] = this.transformY(samples[i]);
 		}
 		return points;

@@ -6,6 +6,7 @@ const diagram = reactive(new Diagram());
 diagram.width = 1000;
 diagram.height = 700;
 provide('diagram', diagram);
+
 </script>
 
 <template lang="pug">

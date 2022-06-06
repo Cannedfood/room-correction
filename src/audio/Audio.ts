@@ -134,6 +134,17 @@ export class AudioMeasurementContext {
 		return recording;
 	}
 
+	playClicks() {
+		const click = generateClick(this.context.sampleRate);
+		const numClicks = 2;
+
+		const queue = new BatchCommand();
+		for(let i = 0; i < numClicks; i++) {
+			queue.play([click, click], i * this.context.sampleRate);
+		}
+		return queue.submit(this.measurementNode);
+	}
+
 	playAndRecord(samples: (Float32Array|undefined)[], delaySeconds: number) {
 		const maxLength = _.max(samples.map(s => s?.length ?? 0))!;
 

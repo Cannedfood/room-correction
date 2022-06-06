@@ -1,63 +1,131 @@
 <script setup lang="ts">
-import { reactive } from 'vue';
+import { computed, inject } from 'vue';
+import { AppState } from './State';
+import type { Measurement, MeasurementType } from './State';
 
-import Diagram from './components/diagram/Diagram.vue';
-import Grid from './components/diagram/Grid.vue';
-import WaveformDiagram from './components/diagram/WaveformDiagram.vue';
-import { AudioMeasurementContext } from './audio/Audio';
-import { generateSineSweep } from './Wavegen';
+import MeasurementDiagram from './components/MeasurementDiagram.vue';
+import GettingStarted from './components/GettingStarted.vue';
+import { isNumber, sample } from 'lodash';
 
-const measurements = reactive([]) as Array<{
-	selected: boolean,
-	name: string,
-	sweep: Float32Array,
-	left: Float32Array,
-	right: Float32Array,
-	sweepFFT?: Float32Array,
-	leftFFT?: Float32Array,
-	rightFFT?: Float32Array,
-}>;
+const state = inject<AppState>('app-state')!;
 
-async function measureStuff() {
-	const a = new AudioMeasurementContext(new AudioContext({ latencyHint: "interactive" }));
-	await a.start();
+function onSelected(m: Measurement, e: MouseEvent) {
+	let othersWereSelected = false;
+	let wasSelected = m.selected;
+	m.selected = false;
+	if(!e.ctrlKey) {
+		for(const mm of state.measurements) {
+			othersWereSelected ||= mm.selected;
+			mm.selected = false;
+		}
+	}
+	m.selected = !wasSelected || othersWereSelected;
+}
 
-	const sweep = generateSineSweep(a.context.sampleRate, 20, 20000, 1, .8);
-	const left  = await a.playAndRecord([ sweep, undefined ], .3);
-	const right = await a.playAndRecord([ undefined, sweep ], .3);
+function selectedCount(...type: MeasurementType[]) {
+	return (
+		state.measurements
+		.filter(m => m.selected && (type.length == 0 || type.includes(m.type)))
+		.length
+	);
+}
 
-	a.stop();
-
-	// console.log(fft([...left]));
-
-	measurements.push({
-		name: measurements.length.toString(),
-		selected: true,
-		sweep,
-		left,
-		right,
+function readFile(file: File) {
+	return new Promise<string>((resolve, reject) => {
+		const reader = new FileReader();
+		reader.onload = e => resolve(e.target?.result as string);
+		reader.onerror = e => reject(e);
+		reader.readAsText(file);
 	});
 }
+
+async function uploadMicCalibration(e: Event) {
+	const files = (e.target as HTMLInputElement).files!;
+	for(let i = 0; i < files.length; i++) {
+		const file = files.item(i)!;
+		const fileContent = await readFile(file);
+		state.parseCalibrationFile(file.name, fileContent);
+	}
+}
+
+const calibration = computed(() => state.measurements.find(m => m.type == 'mic-calibration'));
 
 </script>
 
 <template lang="pug">
 .row
-	button(@click="measureStuff()") Add Measurement
-.row
 	.col.w3
-		.row.w10.outline(v-for="m,i in measurements" :class="{ active: m.selected }")
+		section(v-if="state.measurements.length == 0")
+			GettingStarted
+		.row.w10.outline.layer(
+			v-for="m,i in state.measurements"
+			:class="{ active: m.selected, green: m.type == 'combined-measurement', yellow: m.type == 'mic-calibration' }"
+		)
+			.icon.clickable(@click="onSelected(m, $event)")
+				| {{ m.selected? '🗹' : '☐'}}
 			input.w8(v-model="m.name")
-			button.icon(@click="measurements.splice(i, 1)") &times;
-	Diagram.w7
-		//- Grid.recording(:min-x="0" :max-x="48000")
-		//- 	g.measurement(v-for="m in measurements.filter(x => x.selected)")
-		//- 		WaveformDiagram(:samples="m.sweep" color="#222")
-		//- 		WaveformDiagram(:samples="m.left"  color="red")
-		//- 		WaveformDiagram(:samples="m.right" color="green")
-		Grid.reponse(:min-x="0" :max-x="24000")
-			g.fft(v-for="m in measurements.filter(x => x.selected)")
-				WaveformDiagram(:samples="m.sweepFFT"  color="#222")
-				WaveformDiagram(:samples="m.leftFFT"  color="red")
-				WaveformDiagram(:samples="m.rightFFT" color="green")
+			button.icon(@click="state.download(m)") ↓
+			button.icon(@click="state.measurements.splice(i, 1)") &times;
+		.col
+			button.green(
+				v-if="2 <= selectedCount('measurement', 'combined-measurement')"
+				@click="state.averageMeasurements()"
+			) Average Measurements
+			button.blue(
+				v-if="1 == selectedCount('correction') && 2 == selectedCount()"
+				@click="state.convolveSelection()"
+			) Apply Correction
+	MeasurementDiagram.w7
+.row
+	label.btn.yellow(v-if="!calibration") Upload Mic Calibration
+		input(type="file" @change="uploadMicCalibration($event)")
+	span.yellow(v-else) Using calibration {{calibration.name}}
+
+.row
+	.col
+		button(@click="state.measure()") Measure
+		label Num Measurements:
+			input(type="number" v-model.number="state.settings.numMeasurements")
+		label Sweep Duration:
+			input.right(type="number" placeholder="seconds" v-model="state.settings.sineSweep.duration")
+			| s
+		label Start Frequency:
+			input.right(type="number" v-model.number="state.settings.sineSweep.startFrequencyHz" min="10" max="48000")
+			| Hz
+		label End Frequency:
+			input.right(type="number" v-model.number="state.settings.sineSweep.endFrequencyHz" min="10" max="48000")
+			| Hz
+	.col
+		label.btn Upload Measurement
+			input(type="file")
+.row(v-if="selectedCount()")
+	.col
+		button(@click="state.generateCorrection()")
+			| Generate Correction
+		.row
+			.col
+				b Correction Constraints
+				label Low Cutoff
+					input.right(type="number" v-model.number="state.settings.correction.lowCutoff")
+					| Hz
+				label Hi Cutoff
+					input.right(type="number" v-model.number="state.settings.correction.highCutoff")
+					| Hz
+				label Max Boost
+					input.right(type="number" v-model.number="state.settings.correction.maxBoostDb" min="0" max="120")
+					| db
+				label Max Cut
+					input.right(type="number" v-model.number="state.settings.correction.maxCutDb" max="0" min="-120")
+					| db
+			.col
+				b Filter Settings
+				label Filter Taps
+					select(v-model.number="state.settings.correction.filterLength")
+						option(
+							v-for="o in [32, 64, 128, 256, 512, 1024, 2048, 4096, 8138, 16276, 32552, 48000]"
+							:value="o"
+						) {{o}}
+				label
+					input(type="checkbox" v-model="state.settings.correction.linearPhase")
+					| Linear Phase
 </template>
