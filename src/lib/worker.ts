@@ -1,4 +1,4 @@
-export function declareWorker<T>(desc: T) {
+export function declareWorker(desc: { [key: string]: (...args: any[]) => any }) {
 	window.onmessage = async function(e: MessageEvent<any[]>) {
 		const [name, referenceId] = e.data;
 		const result = await desc[name](...e.data.slice(2));
@@ -8,27 +8,27 @@ export function declareWorker<T>(desc: T) {
 }
 
 export function wrapWorker<WorkerDef>(port: Worker) {
-	const resolve = {};
+	const resolveCallbacks = {} as { [ref: string]: any };
 
 	function sendCommand(name: keyof WorkerDef, ...args: any[]) {
 		return new Promise((resolve, reject) => {
 			const refid = Math.random().toString();
-			this.resolve[refid] = resolve;
-			this.port.postMessage([name, refid, ...args]);
+			resolveCallbacks[refid] = resolve;
+			port.postMessage([name, refid, ...args]);
 		})
 	}
 	function signalDone(refid: string, value: any) {
-		resolve[refid](value);
-		delete this.resolve[refid];
+		resolveCallbacks[refid](value);
+		delete resolveCallbacks[refid];
 	}
 
 	port.onmessage = (e: MessageEvent<any[]>) => {
 		const [refid, result] = e.data;
-		this._signalDone(refid, result);
+		signalDone(refid, result);
 	};
 
 	return {
 		signalDone,
-		action: sendCommand
+		sendCommand
 	};
 }
