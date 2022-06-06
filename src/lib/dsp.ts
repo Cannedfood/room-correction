@@ -111,7 +111,7 @@ export function generateCorrectionCurve2(
 	maxCut: number,
 	...amps: Float32Array[])
 {
-	amps = amps.map(m => psychoacousticSmooth(m));
+	// amps = amps.map(m => psychoacousticSmooth(m));
 
 	const len        = amps[0].length;
 	const lowCutoff  = lowCutoffHz  * len / sampleRate;
