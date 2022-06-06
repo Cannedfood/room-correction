@@ -4,6 +4,7 @@ body {
 	color: #EEE;
 	height: 100vh;
 	max-height: 100vh;
+	font-family: monospace;
 
 	::selection {
 		color: #000;
@@ -18,6 +19,9 @@ input {
 	border: none;
 	outline: none;
 }
+
+.b { font-weight: bold; }
+.sm { font-size: .8em; }
 
 button, select, .btn {
 	border: 1px solid black;
