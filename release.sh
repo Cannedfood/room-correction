@@ -8,7 +8,8 @@ BRANCH=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
 npm run build
 
 # Commit in release branch
-git checkout release
+git checkout gh-pages
+git rm -r $(git ls-files | grep -v '.gitignore')
 cp -r dist/* .
 git add .
 git commit -m "Release via. branch '${BRANCH}'"
