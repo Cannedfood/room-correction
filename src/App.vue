@@ -29,7 +29,7 @@ function selectedCount(...type: MeasurementType[]) {
 	);
 }
 
-function readFile(file: File) {
+function readTextFile(file: File) {
 	return new Promise<string>((resolve, reject) => {
 		const reader = new FileReader();
 		reader.onload = e => resolve(e.target?.result as string);
@@ -37,13 +37,29 @@ function readFile(file: File) {
 		reader.readAsText(file);
 	});
 }
+function readBinaryFile(file: File) {
+	return new Promise<ArrayBuffer>((resolve, reject) => {
+		const reader = new FileReader();
+		reader.onload = e => resolve(e.target?.result as ArrayBuffer);
+		reader.onerror = e => reject(e);
+		reader.readAsArrayBuffer(file);
+	});
+}
 
 async function uploadMicCalibration(e: Event) {
 	const files = (e.target as HTMLInputElement).files!;
 	for(let i = 0; i < files.length; i++) {
 		const file = files.item(i)!;
-		const fileContent = await readFile(file);
+		const fileContent = await readTextFile(file);
 		state.parseCalibrationFile(file.name, fileContent);
+	}
+}
+
+async function uploadMeasurement(e: Event) {
+	const files = (e.target as HTMLInputElement).files!;
+	for(let i = 0; i < files.length; i++) {
+		const file = files.item(i)!;
+		state.uploadMeasurementWAV(file.name, await readBinaryFile(file));
 	}
 }
 
@@ -65,7 +81,7 @@ const isChrome = (window as any).chrome;
 			.icon.clickable(@click="onSelected(m, $event)")
 				| {{ m.selected? '🗹' : '☐'}}
 			input.w8(v-model="m.name")
-			button.icon(@click="state.download(m)") ↓
+			button.icon(v-if="m.channels[0]?.impulseResponse" @click="state.download(m)") ↓
 			button.icon(@click="state.measurements.splice(i, 1)") &times;
 		.col
 			button.green(
@@ -76,14 +92,14 @@ const isChrome = (window as any).chrome;
 				v-if="1 == selectedCount('correction') && 2 == selectedCount()"
 				@click="state.convolveSelection()"
 			) Apply Correction
-		.red(v-if="!isChrome")
-			p.b Measurement does only reliably work on Chrome (and other chromium-based browsers).
-			p.sm Firefox for example will mute all inputs while playing a sound, so we can't measure the room response while playing a sine sweep.
-			p.sm Other browsers may work as well, but I could only test it on Firefox and Chromium
+		.box.red(v-if="!isChrome")
+			h2 Warning!
+			p.b Measurement only works reliably on Chromium-based browsers.
+			p.sm Other browsers may work, but only Firefox and Chromium were tested. Firefox definitely didn't work.
 	MeasurementDiagram.w7
 .row
 	label.btn.yellow(v-if="!calibration") Upload Mic Calibration
-		input(type="file" @change="uploadMicCalibration($event)")
+		input(type="file" accept=".txt" @change="uploadMicCalibration($event)")
 	span.yellow(v-else) Using calibration {{calibration.name}}
 
 .row
@@ -109,7 +125,7 @@ const isChrome = (window as any).chrome;
 			| Hz
 	.col
 		label.btn Upload Measurement
-			input(type="file")
+			input(type="file" accept=".wav" multiple @change="uploadMeasurement($event)")
 .row(v-if="selectedCount()")
 	.col
 		button(@click="state.generateCorrection()")

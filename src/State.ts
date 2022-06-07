@@ -1,4 +1,5 @@
 import _, { isNumber } from 'lodash';
+import { WaveFile } from 'wavefile';
 import { AudioMeasurementContext } from './audio/Audio';
 import { fft, generateFirFilter, generateCorrectionCurve2, db, ifft_c2r, calcPhase, calcMagnitudes, convolve } from './lib/dsp';
 import { vectorAverage } from './lib/vector';
@@ -51,6 +52,22 @@ export class AppState {
 
 	download(m: Measurement) {
 		saveWave(`${m.name}.wav`, m.sampleRate, m.channels.map(c => c.impulseResponse!));
+	}
+
+	uploadMeasurementWAV(name: string, data: ArrayBuffer) {
+		const wav = new WaveFile();
+		wav.fromBuffer(new Uint8Array(data));
+		const samples = wav.getSamples(false, Float32Array) as unknown as Float32Array[];
+		if(!Array.isArray(samples)) throw new Error("What??");
+
+		this.measurements.push({
+			name,
+			type: 'measurement',
+			sampleRate: (wav.fmt as any).sampleRate,
+			referenceChannels: [],
+			channels: samples.map(s => fromImpulseResponse(s)),
+			selected: true,
+		})
 	}
 
 	async measure() {

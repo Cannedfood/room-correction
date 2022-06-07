@@ -12,12 +12,24 @@ body {
 	}
 }
 
+p, h1, h2, h3, h4, h5, h6 {
+	margin-top: 0;
+}
+
 * { color: inherit; }
 input {
 	background: #FFF1;
 	margin: 0;
 	border: none;
 	outline: none;
+}
+
+.box {
+	padding-inline: .8em;
+	padding-block: .5em;
+	margin: .5em;
+	border-radius: .3em;
+	border: 1px solid #FFF2;
 }
 
 .b { font-weight: bold; }
