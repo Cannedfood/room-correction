@@ -17,3 +17,5 @@ git commit -m "Release via. branch '${BRANCH}'"
 # Return to main branch
 git checkout "${BRANCH}"
 git stash apply
+
+echo "Don't forget to push the gh-pages branch, to publish the release!"
