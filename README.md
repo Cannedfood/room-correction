@@ -3,6 +3,8 @@
 **[Try it here](https://cannedfood.github.io/room-correction)**
 
 ## TODO
+- Bugs
+  - [ ] Measurements become louder when corrected
 - Improve UI
   - [ ] Color Coding
   - [ ] Move the measure thing more into view (Maybe to the side-pane with the measurements)
