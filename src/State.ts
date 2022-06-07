@@ -50,7 +50,7 @@ export class AppState {
 	}
 
 	download(m: Measurement) {
-		saveWave("Download.wav", m.sampleRate, m.channels.map(c => c.impulseResponse!));
+		saveWave(`${m.name}.wav`, m.sampleRate, m.channels.map(c => c.impulseResponse!));
 	}
 
 	async measure() {
