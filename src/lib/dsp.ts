@@ -18,7 +18,14 @@ export function calcPhase(real: Float32Array, imag: Float32Array) {
 	return phase;
 }
 
-export function fft(data: Float32Array) {
+export interface FFT {
+	real:      Float32Array;
+	imag:      Float32Array;
+	magnitude: Float32Array;
+	phase:     Float32Array;
+};
+
+export function fft(data: Float32Array): FFT {
 	const real = new Float32Array(data);
 	const imag = new Float32Array(data.length);
 	fft_in_place(real, imag);
@@ -26,14 +33,34 @@ export function fft(data: Float32Array) {
 	const magnitude = calcMagnitudes(real, imag);
 	const phase     = calcPhase(real, imag);
 
-	return { real, imag, magnitude, phase };
+	return normalizeFFT({ real, imag, magnitude, phase });
 }
 
-export function ifft_c2r(fftReal: Float32Array, fftImag: Float32Array) {
+export function ifft_c2r(fftReal: Float32Array, fftImag: Float32Array): Float32Array {
 	const real = new Float32Array(fftReal);
 	const imag = new Float32Array(fftImag);
 	ifft_in_place(real, imag);
+	const fac = 1 / real.length;
+	for(let i = 0; i < real.length; i++) {
+		real[i] *= fac;
+	}
 	return real;
+}
+
+export function normalizeFFT(data: FFT, length?: number): FFT
+{
+	length ??= data.magnitude.length;
+
+	const count = data.magnitude.length;
+
+	const inv_length = 1 / length;
+	for(let i = 0; i < count; i++) {
+		data.real[count]      *= inv_length;
+		data.imag[count]      *= inv_length;
+		data.magnitude[count] *= inv_length;
+	}
+
+	return data;
 }
 
 export function vectorMultiply(...vectors: Float32Array[]) {
@@ -74,36 +101,42 @@ export function to_db(gain: number) {
 	return 20 * Math.log10(gain);
 }
 
-export function smooth(data: Float32Array, octaves: number) {
+export function smooth(data: Float32Array, octaves: number, logBase: boolean = true) {
 	const octaveMultiplier = Math.pow(2, octaves);
 
-	const copy = new Float32Array(data);
-	for(let i = 0; i < copy.length; i++) {
+	const integral = new Float32Array(data.length + 1);
+	if(logBase) {
+		for(let i = 1; i < integral.length; i++)
+			integral[i] = Math.log2(data[i - 1]);
+	}
+	else {
+		for(let i = 1; i < integral.length; i++)
+			integral[i] = data[i - 1];
+	}
+	for(let i = 1; i < integral.length; i++) {
+		integral[i] += integral[i - 1];
+	}
+
+	const result = new Float32Array(data.length);
+	for(let i = 0; i < result.length; i++) {
 		const windowStart = Math.floor(i / octaveMultiplier);
 		const windowEnd   = Math.floor(i * octaveMultiplier) + 1;
-		const trueStart = Math.max(0, windowStart);
-		const trueEnd   = Math.min(data.length, windowEnd);
+		const trueStart   = Math.max(0, windowStart);
+		const trueEnd     = Math.min(data.length, windowEnd);
 
-		copy[i] = average(
-			data,
-			trueStart, trueEnd
-		);
+		result[i] = (integral[trueEnd] - integral[trueStart]) / (trueEnd - trueStart);
 	}
-	return copy;
-}
 
-export function psychoacousticSmooth(amp: Float32Array) {
-	const result = smooth(amp, 1.0);
-	for(let i = 0; i < result.length; i++) {
-		result[i] = Math.max(
-			amp[i],
-			result[i]
-		);
+	if(logBase) {
+		for(let i = 0; i < result.length; i++) {
+			result[i] = Math.pow(2, result[i]);
+		}
 	}
+
 	return result;
 }
 
-export function generateCorrectionCurve2(
+export function generateCorrectionCurve(
 	sampleRate: number,
 	lowCutoffHz: number,
 	highCutoffHz: number,
@@ -111,13 +144,11 @@ export function generateCorrectionCurve2(
 	maxCut: number,
 	...amps: Float32Array[])
 {
-	// amps = amps.map(m => psychoacousticSmooth(m));
-
 	const len        = amps[0].length;
 	const lowCutoff  = lowCutoffHz  * len / sampleRate;
 	const highCutoff = highCutoffHz * len / sampleRate;
 	const avg        = average(amps.map(
-		a => average(a, lowCutoff, highCutoff)
+		a => logAverage(a)
 	));
 	console.log("Cutoffs", {lowCutoff, highCutoff, avg, len})
 
@@ -128,7 +159,7 @@ export function generateCorrectionCurve2(
 		for(let i = lowCutoff; i < highCutoff; i++) {
 			const f = avg / amp[i];
 			correction[i] = f;
-			// correction[i] = Math.max(Math.min(f, maxBoost), maxCut);
+			correction[i] = Math.max(Math.min(f, maxBoost), maxCut);
 		}
 		results.push(correction);
 	}
@@ -140,6 +171,22 @@ export function generateCorrectionCurve2(
 	});
 
 	return results;
+}
+
+function logAverage(
+	values: Float32Array,
+	start?: number,
+	end?: number)
+{
+	start ??= 0;
+	end   ??= values.length;
+
+	let result = 0;
+	for(let i = start; i < end; i++) {
+		result += Math.log2(values[i]);
+	}
+	result /= (end - start);
+	return result * result;
 }
 
 function average(
@@ -179,29 +226,42 @@ function min(values: number[]|Float32Array, start?: number, end?: number) {
 	return result;
 }
 
-export function generateFirFilter(amplitudes: Float32Array, length: number, windowFn: WindowingFunction = 'hann') {
+export function generateFirFilter(amplitudes: Float32Array, length: number, windowFn: WindowingFunction = 'rectangular') {
 	let real = new Float32Array(amplitudes);
 	let imag = new Float32Array(amplitudes.length);
 	ifft_in_place(real, imag);
 	for(let i = 0; i < real.length; i++)
 		real[i] /= real.length;
 
-	let windowedAndShifted = new Float32Array(length);
-	for(let i = 0; i < windowedAndShifted.length / 2; i++) {
-		windowedAndShifted[windowedAndShifted.length/2+i] = real[i];
-		windowedAndShifted[i] = real[real.length - windowedAndShifted.length/2 + i];
-	}
-	applyWindowInplace(windowedAndShifted, windowFn);
-
-	return windowedAndShifted;
+	let result = real;
+	result = circularShift(-Math.floor(real.length / 2), result);
+	result = applyWindowInplace(windowFn, result);
+	return result;
 }
 
-export type WindowingFunction = 'hann' | 'hemming' | 'blackman';
-export function applyWindowInplace(data: Float32Array, windowingFunction: WindowingFunction) {
+export function circularShift(samples: number, data: Float32Array) {
+	if(samples < 0) {
+		samples = data.length - samples;
+	}
+
+	const copy = new Float32Array(samples);
+	for(let i = 0; i < data.length; i++) {
+		data[i] = copy[(i + samples) % data.length];
+	}
+	return data;
+}
+
+export type WindowingFunction = 'rectangular' | 'hann' | 'hemming' | 'blackman';
+export function applyWindowInplace(windowingFunction: WindowingFunction, data: Float32Array) {
 	const N = data.length;
-	for(let n = 0; n < data.length; n++) {
-		const f = Math.sin(Math.PI * n/N);
-		data[n] *= f*f;
+	switch(windowingFunction) {
+		case 'rectangular': break;
+		case 'hann': default:
+			for(let n = 0; n < data.length; n++) {
+				const f = Math.sin(Math.PI * n/N);
+				data[n] *= f*f;
+			}
+			break;
 	}
 	return data;
 }

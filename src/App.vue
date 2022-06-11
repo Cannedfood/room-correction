@@ -3,6 +3,7 @@ import { computed, inject } from 'vue';
 import { AppState } from './State';
 import type { Measurement, MeasurementType } from './State';
 
+import Fold from './components/Fold.vue';
 import MeasurementDiagram from './components/MeasurementDiagram.vue';
 import GettingStarted from './components/GettingStarted.vue';
 
@@ -59,7 +60,10 @@ async function uploadMeasurement(e: Event) {
 	const files = (e.target as HTMLInputElement).files!;
 	for(let i = 0; i < files.length; i++) {
 		const file = files.item(i)!;
-		state.uploadMeasurementWAV(file.name, await readBinaryFile(file));
+		state.uploadMeasurementWAV(
+			file.name.replace(/\.wav$/, ''),
+			await readBinaryFile(file)
+		);
 	}
 }
 
@@ -92,68 +96,84 @@ const isChrome = (window as any).chrome;
 				v-if="1 == selectedCount('correction') && 2 == selectedCount()"
 				@click="state.convolveSelection()"
 			) Apply Correction
-		.box.red(v-if="!isChrome")
-			h2 Warning!
-			p.b Measurement only works reliably on Chromium-based browsers.
-			p.sm Other browsers may work, but only Firefox and Chromium were tested. Firefox definitely didn't work.
-	MeasurementDiagram.w7
-.row
-	label.btn.yellow(v-if="!calibration") Upload Mic Calibration
-		input(type="file" accept=".txt" @change="uploadMicCalibration($event)")
-	span.yellow(v-else) Using calibration {{calibration.name}}
+		Fold(title="Apply Smoothing" v-if="selectedCount()")
+			.row
+				.col
+					label Octaves
+						select(v-model.number="state.settings.smooth.octaves" @select="")
+							option(:value="1/48") 1/48
+							option(:value="1/24") 1/24
+							option(:value="1/12") 1/12
+							option(:value="1")    1
+					label Log Base
+						input(type="checkbox" v-model.number="state.settings.smooth.log")
+				button(@click="state.generateSmoothed()") Generate
+		Fold(title="Generate Correction" v-if="selectedCount('measurement') == 1")
+			.row
+				.col
+					button(@click="state.generateCorrection()")
+						| Generate Correction
+					.row
+						.col
+							b Correction Constraints
+							label Low Cutoff
+								input.right(type="number" v-model.number="state.settings.correction.lowCutoff")
+								| Hz
+							label Hi Cutoff
+								input.right(type="number" v-model.number="state.settings.correction.highCutoff")
+								| Hz
+							label Max Boost
+								input.right(type="number" v-model.number="state.settings.correction.maxBoostDb" min="0" max="120")
+								| db
+							label Max Cut
+								input.right(type="number" v-model.number="state.settings.correction.maxCutDb" max="0" min="-120")
+								| db
+						.sep
+						.col
+							b Filter Settings
+							label Filter Taps
+								select(v-model.number="state.settings.correction.filterLength")
+									option(
+										v-for="o in [32, 64, 128, 256, 512, 1024, 2048, 4096, 8138, 16276, 32552, 48000]"
+										:value="o"
+									) {{o}}
+							label
+								input(type="checkbox" v-model="state.settings.correction.linearPhase")
+								| Linear Phase
+		hr
+		Fold(title="Upload" :open="state.measurements.length == 0")
+			.row
+				label.btn.yellow(v-if="!calibration") Upload Mic Calibration
+					input(type="file" accept=".txt" @change="uploadMicCalibration($event)")
+				label.btn Upload Measurement
+					input(type="file" accept=".wav" multiple @change="uploadMeasurement($event)")
+		Fold(title="Create Measurement")
+			.col
+				.box.red(v-if="!isChrome")
+					h2 Your browser is not supported!
+					p.sm Some browsers (like <b>Firefox</b>) mute all inputs during playback, which makes measurements impossible
+					p.sm Measuring only works reliably on Chromium-based browsers.
+				.row
+					button(@click="state.measure()") Measure
+				//- label Calibration
+				//- 	select(v-if="state.measurements.some(m => m.type == 'mic-calibration')")
+				//- 		option None
+				//- 		option(
+				//- 			v-for="m of state.measurements.filter(m => m.type == 'mic-calibration')"
+				//- 			:value="m"
+				//- 		) {{m.name}}
+				.col
+					label Num Measurements:
+						input(type="number" v-model.number="state.settings.numMeasurements")
+					label Sweep Duration:
+						input.right(type="number" placeholder="seconds" v-model="state.settings.sineSweep.duration")
+						| s
+					label Start Frequency:
+						input.right(type="number" v-model.number="state.settings.sineSweep.startFrequencyHz" min="10" max="48000")
+						| Hz
+					label End Frequency:
+						input.right(type="number" v-model.number="state.settings.sineSweep.endFrequencyHz" min="10" max="48000")
+						| Hz
 
-.row
-	.col
-		button(@click="state.measure()") Measure
-		//- label Calibration
-		//- 	select(v-if="state.measurements.some(m => m.type == 'mic-calibration')")
-		//- 		option None
-		//- 		option(
-		//- 			v-for="m of state.measurements.filter(m => m.type == 'mic-calibration')"
-		//- 			:value="m"
-		//- 		) {{m.name}}
-		label Num Measurements:
-			input(type="number" v-model.number="state.settings.numMeasurements")
-		label Sweep Duration:
-			input.right(type="number" placeholder="seconds" v-model="state.settings.sineSweep.duration")
-			| s
-		label Start Frequency:
-			input.right(type="number" v-model.number="state.settings.sineSweep.startFrequencyHz" min="10" max="48000")
-			| Hz
-		label End Frequency:
-			input.right(type="number" v-model.number="state.settings.sineSweep.endFrequencyHz" min="10" max="48000")
-			| Hz
-	.col
-		label.btn Upload Measurement
-			input(type="file" accept=".wav" multiple @change="uploadMeasurement($event)")
-.row(v-if="selectedCount()")
-	.col
-		button(@click="state.generateCorrection()")
-			| Generate Correction
-		.row
-			.col
-				b Correction Constraints
-				label Low Cutoff
-					input.right(type="number" v-model.number="state.settings.correction.lowCutoff")
-					| Hz
-				label Hi Cutoff
-					input.right(type="number" v-model.number="state.settings.correction.highCutoff")
-					| Hz
-				label Max Boost
-					input.right(type="number" v-model.number="state.settings.correction.maxBoostDb" min="0" max="120")
-					| db
-				label Max Cut
-					input.right(type="number" v-model.number="state.settings.correction.maxCutDb" max="0" min="-120")
-					| db
-			.col
-				b Filter Settings
-				label Filter Taps
-					select(v-model.number="state.settings.correction.filterLength")
-						option(
-							v-for="o in [32, 64, 128, 256, 512, 1024, 2048, 4096, 8138, 16276, 32552, 48000]"
-							:value="o"
-						) {{o}}
-				label
-					input(type="checkbox" v-model="state.settings.correction.linearPhase")
-					| Linear Phase
+	MeasurementDiagram.w7
 </template>

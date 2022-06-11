@@ -1,7 +1,7 @@
 import _, { isNumber } from 'lodash';
 import { WaveFile } from 'wavefile';
 import { AudioMeasurementContext } from './audio/Audio';
-import { fft, generateFirFilter, generateCorrectionCurve2, db, ifft_c2r, calcPhase, calcMagnitudes, convolve } from './lib/dsp';
+import { fft, generateFirFilter, generateCorrectionCurve, db, ifft_c2r, calcPhase, calcMagnitudes, convolve, smooth } from './lib/dsp';
 import { vectorAverage } from './lib/vector';
 import { generateSineSweep, saveWave } from './Wavegen';
 
@@ -47,6 +47,10 @@ export class AppState {
 			highCutoff: 20000,
 			maxBoostDb: 10,
 			maxCutDb: -10,
+		},
+		smooth: {
+			octaves: 1/12.0,
+			log: true,
 		}
 	}
 
@@ -161,12 +165,37 @@ export class AppState {
 		});
 	}
 
+	generateSmoothed() {
+		for(let m of this.measurements.filter(m => m.selected)) {
+			m.selected = false;
+			this.measurements.push({
+				name: `${m.name} (smoothed)`,
+				referenceChannels: [],
+				channels: m.channels.map(c => {
+					const smoothed = smooth(c.fftAmp, this.settings.smooth.octaves, this.settings.smooth.log);
+
+					const real = new Float32Array(c.fftReal);
+					const imag = new Float32Array(c.fftImag);
+					for(let i = 0; i < smoothed.length; i++) {
+						const factor = smoothed[i] / c.fftAmp[i];
+						real[i] *= factor;
+						imag[i] *= factor;
+					}
+					return fromFFT(real, imag);
+				}),
+				sampleRate: m.sampleRate,
+				selected: true,
+				type: m.type,
+			});
+		}
+	}
+
 	generateCorrection() {
 		const [amplitudeResponse] = this.measurements.filter(m => m.selected);
 		if(!amplitudeResponse)
 			return;
 
-		const correctionCurves = generateCorrectionCurve2(
+		const correctionCurves = generateCorrectionCurve(
 			amplitudeResponse.sampleRate,
 			this.settings.correction.lowCutoff,
 			this.settings.correction.highCutoff,
