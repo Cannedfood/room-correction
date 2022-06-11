@@ -21,8 +21,8 @@ function onScroll(e: WheelEvent) {
 </script>
 
 <template lang="pug">
-.stack(@wheel="onScroll($event)")
-	Diagram
+.stack.h10(@wheel="onScroll($event)")
+	Diagram.h10
 		Grid.recording(
 			v-if="!state.showFrequency"
 			:min-x="0" :max-x="48000"

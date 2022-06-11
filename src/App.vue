@@ -74,7 +74,7 @@ const isChrome = (window as any).chrome;
 </script>
 
 <template lang="pug">
-.row
+.row.h10
 	.col.w3
 		section(v-if="state.measurements.length == 0")
 			GettingStarted
@@ -140,7 +140,7 @@ const isChrome = (window as any).chrome;
 							label
 								input(type="checkbox" v-model="state.settings.correction.linearPhase")
 								| Linear Phase
-		hr
+		.sep
 		Fold(title="Upload" :open="state.measurements.length == 0")
 			.row
 				label.btn.yellow(v-if="!calibration") Upload Mic Calibration
