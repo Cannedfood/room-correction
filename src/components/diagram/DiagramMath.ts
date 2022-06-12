@@ -13,8 +13,7 @@ export function pointsToPath(
 	return result.join(' ');
 }
 
-export function decimatePoints(samples: Float32Array, points: number)
-{
+export function decimatePoints(samples: Float32Array, points: number) {
 	if(!samples || samples.length == 0) {
 		return {
 			min: new Float32Array(0),

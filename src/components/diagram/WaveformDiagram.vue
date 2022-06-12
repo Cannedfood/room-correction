@@ -10,7 +10,7 @@ const diagram = inject<Diagram>('diagram')!;
 const props = defineProps<{
 	samples?: Float32Array,
 	color?:   string,
-	timeScale?: number,
+	sampleRate?: number,
 }>();
 
 const decimatedSamples = computed(() => {
@@ -22,7 +22,10 @@ const decimatedSamples = computed(() => {
 		};
 	}
 	const numPoints = diagram.width / grid.granularityX;
-	return decimatePoints(grid.samplesToPoints(props.samples!, 48000), numPoints);
+	return decimatePoints(
+		grid.samplesToPoints(props.samples!, props.sampleRate ?? 48000),
+		numPoints
+	);
 });
 const minPath = computed(
 	() => pointsToPath(

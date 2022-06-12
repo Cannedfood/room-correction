@@ -42,14 +42,14 @@ export class AppState {
 		},
 		correction: {
 			linearPhase: true,
-			filterLength: 512,
+			filterLength: 48000,
 			lowCutoff: 30,
 			highCutoff: 20000,
 			maxBoostDb: 10,
-			maxCutDb: -10,
+			maxCutDb: -100,
 		},
 		smooth: {
-			octaves: 1/12.0,
+			octaves: 1/96.0,
 			log: true,
 		}
 	}

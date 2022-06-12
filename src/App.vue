@@ -101,6 +101,7 @@ const isChrome = (window as any).chrome;
 				.col
 					label Octaves
 						select(v-model.number="state.settings.smooth.octaves" @select="")
+							option(:value="1/96") 1/96
 							option(:value="1/48") 1/48
 							option(:value="1/24") 1/24
 							option(:value="1/12") 1/12
@@ -174,6 +175,5 @@ const isChrome = (window as any).chrome;
 					label End Frequency:
 						input.right(type="number" v-model.number="state.settings.sineSweep.endFrequencyHz" min="10" max="48000")
 						| Hz
-
 	MeasurementDiagram.w7
 </template>

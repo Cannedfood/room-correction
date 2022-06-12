@@ -30,20 +30,25 @@ export function fft(data: Float32Array): FFT {
 	const imag = new Float32Array(data.length);
 	fft_in_place(real, imag);
 
+	// for(let i = 0; i < real.length; i++) {
+	// 	real[i] /= real.length;
+	// 	imag[i] /= real.length;
+	// }
+
 	const magnitude = calcMagnitudes(real, imag);
 	const phase     = calcPhase(real, imag);
 
-	return normalizeFFT({ real, imag, magnitude, phase });
+	return { real, imag, magnitude, phase };
 }
 
-export function ifft_c2r(fftReal: Float32Array, fftImag: Float32Array): Float32Array {
+export function ifft_c2r(fftReal: Float32Array, fftImag?: Float32Array): Float32Array {
 	const real = new Float32Array(fftReal);
-	const imag = new Float32Array(fftImag);
+	const imag = fftImag?
+		new Float32Array(fftImag) :
+		new Float32Array(fftReal.length);
 	ifft_in_place(real, imag);
-	const fac = 1 / real.length;
-	for(let i = 0; i < real.length; i++) {
-		real[i] *= fac;
-	}
+	for(let i = 0; i < real.length; i++)
+		real[i] /= real.length;
 	return real;
 }
 
@@ -86,10 +91,6 @@ export function convolve(a: Float32Array, b: Float32Array) {
 	const result = new Float32Array(maxLen);
 
 	convolveReal(a2, b2, result);
-
-	for(let i = 0; i < result.length; i++) {
-		result[i] /= maxLen;
-	}
 
 	return result;
 }
@@ -158,8 +159,11 @@ export function generateCorrectionCurve(
 		correction.fill(1);
 		for(let i = lowCutoff; i < highCutoff; i++) {
 			const f = avg / amp[i];
-			correction[i] = f;
 			correction[i] = Math.max(Math.min(f, maxBoost), maxCut);
+		}
+		// Mirror around nyquist
+		for(let i = 0; i < correction.length / 2; i++) {
+			correction[correction.length - 1 - i] = correction[i];
 		}
 		results.push(correction);
 	}
@@ -227,14 +231,11 @@ function min(values: number[]|Float32Array, start?: number, end?: number) {
 }
 
 export function generateFirFilter(amplitudes: Float32Array, length: number, windowFn: WindowingFunction = 'rectangular') {
-	let real = new Float32Array(amplitudes);
-	let imag = new Float32Array(amplitudes.length);
-	ifft_in_place(real, imag);
-	for(let i = 0; i < real.length; i++)
-		real[i] /= real.length;
+	let result = ifft_c2r(amplitudes);
+	result = circularShift(Math.floor((result.length - 1) / 2), result);
 
-	let result = real;
-	result = circularShift(-Math.floor(real.length / 2), result);
+	const off = Math.floor((result.length-length)/2);
+	result = result.subarray(off, off + length);
 	result = applyWindowInplace(windowFn, result);
 	return result;
 }
@@ -244,20 +245,24 @@ export function circularShift(samples: number, data: Float32Array) {
 		samples = data.length - samples;
 	}
 
-	const copy = new Float32Array(samples);
+	const copy = new Float32Array(data);
 	for(let i = 0; i < data.length; i++) {
-		data[i] = copy[(i + samples) % data.length];
+		copy[i] = data[(i + samples) % data.length];
 	}
-	return data;
+	return copy;
 }
 
 export type WindowingFunction = 'rectangular' | 'hann' | 'hemming' | 'blackman';
-export function applyWindowInplace(windowingFunction: WindowingFunction, data: Float32Array) {
-	const N = data.length;
+export function applyWindowInplace(windowingFunction: WindowingFunction, data: Float32Array)
+{
+	const start = 0;
+	const end   = data.length;
+
+	const N = end - start;
 	switch(windowingFunction) {
 		case 'rectangular': break;
 		case 'hann': default:
-			for(let n = 0; n < data.length; n++) {
+			for(let n = start; n < end; n++) {
 				const f = Math.sin(Math.PI * n/N);
 				data[n] *= f*f;
 			}
