@@ -242,6 +242,30 @@ export class AppState {
 			irs.push(fromImpulseResponse(ir));
 		}
 
+		for(let i = 0; i < a.channels.length; i++) {
+			const aa = a.channels[i];
+			const bb = b.channels[i];
+			if(aa.fftAmp.length != bb.fftAmp.length)
+				continue;
+
+			const c = new Float32Array(Math.max(
+				aa.fftAmp.length,
+				bb.fftAmp.length
+			));
+			c.fill(1);
+			for(let j = 0; j < aa.fftAmp.length; j++)
+				c[j] *= aa.fftAmp[j];
+			for(let j = 0; j < bb.fftAmp.length; j++)
+				c[j] *= bb.fftAmp[j];
+			irs.push({
+				fftAmp: c,
+				fftImag: new Float32Array(),
+				fftPhase: new Float32Array(),
+				fftReal: new Float32Array(),
+				impulseResponse: new Float32Array()
+			});
+		}
+
 		this.measurements.push(<Measurement> {
 			name: `${a.name} x ${b.name}`,
 			type: 'combined-measurement',

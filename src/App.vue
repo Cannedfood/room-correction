@@ -105,6 +105,8 @@ const isChrome = (window as any).chrome;
 							option(:value="1/48") 1/48
 							option(:value="1/24") 1/24
 							option(:value="1/12") 1/12
+							option(:value="1/6")  1/6
+							option(:value="1/3")  1/3
 							option(:value="1")    1
 					label Log Base
 						input(type="checkbox" v-model.number="state.settings.smooth.log")
