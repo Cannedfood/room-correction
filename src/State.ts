@@ -143,7 +143,7 @@ export class AppState {
 
 		const channels = [] as MeasurementChannel[];
 		for(let i = 0; i < numChannels; i++) {
-			const ampAverage = vectorAverage(...measmts.map(m => m.channels[i].fftAmp));
+			const ampAverage = vectorAverage('logarithmic', ...measmts.map(m => m.channels[i].fftAmp));
 			const ampImag    = new Float32Array(ampAverage.length);
 
 			channels.push(fromFFT(

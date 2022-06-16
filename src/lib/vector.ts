@@ -22,17 +22,22 @@ export function resize(
 	}
 }
 
-export function vectorAverage(...data: Float32Array[]) {
+export function vectorAverage(mode: 'linear' | 'logarithmic', ...data: Float32Array[]) {
 	const result = new Float32Array(_.max(data.map(d => d.length))!);
 	for(let i = 0; i < result.length; i++) {
 		let n = 0;
 		for(let d of data) {
 			if(d.length > i) {
-				result[i] += d[i];
+				if(mode == 'linear')
+					result[i] += d[i];
+				else
+					result[i] += Math.log2(d[i]);
 				n++;
 			}
 		}
 		result[i] /= n;
+		if(mode == 'logarithmic')
+			result[i] = Math.pow(2, result[i]);
 	}
 	return result;
 }
